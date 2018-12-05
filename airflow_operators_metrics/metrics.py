@@ -113,7 +113,11 @@ def _get_processes_metrics() -> t.Iterator[ProcessMetrics]:
         if not airflow_data:
             continue
 
-        mem = process.memory_full_info()
+        try:
+            mem = process.memory_full_info()
+        except psutil.NoSuchProcess:
+            continue
+
         cpu_times = process.cpu_times()
 
         yield ProcessMetrics(
