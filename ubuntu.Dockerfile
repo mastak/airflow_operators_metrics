@@ -28,10 +28,10 @@ COPY requirements.txt /app/requirements.txt
 RUN  pip3 install -U -r /app/requirements.txt
 
 COPY ./setup.py /app/setup.py
-COPY ./airflow_operator_stats /app/airflow_operator_stats
+COPY ./airflow_operators_metrics /app/airflow_operators_metrics
 
 RUN pip install -e /app
 
 WORKDIR /app
 
-CMD ["python3", "/app/airflow_operator_stats/server.py"]
+CMD ["python3", "/app/airflow_operators_metrics/server.py"]
