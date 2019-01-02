@@ -1,20 +1,24 @@
-FROM python:3.7-alpine
+FROM python:3.7-alpine as builder
 
 RUN apk add --update \
     build-base \
     python3-dev \
-    linux-headers \
-    py-psutil && \
- rm -rf /var/cache/apk/*
+    linux-headers && \
+    mkdir /wheels
 
 COPY requirements.txt /requirements.txt
 
-RUN  pip3 install -U -r /requirements.txt
+RUN pip3 wheel --wheel-dir=/wheels --find-links=/wheels -r /requirements.txt
 
-COPY ./setup.py /app/setup.py
-COPY ./airflow_operators_metrics /app/airflow_operators_metrics
 
-RUN pip install -e /app
+FROM python:3.7-alpine
+
+COPY --from=builder /wheels /wheels
+
+COPY ./ /app
+
+RUN pip install --no-index --find-links=/wheels -e /app && \
+    rm -rf /wheels
 
 WORKDIR /app
 
