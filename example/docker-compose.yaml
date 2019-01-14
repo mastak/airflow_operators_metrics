@@ -1,0 +1,71 @@
+version: '3.4'
+services:
+  redis:
+    image: redis:3.2.7
+
+  postgres:
+    image: postgres:11
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+
+  airflow_webserver:
+    image: puckel/docker-airflow:1.10.1
+    command: webserver
+    ports:
+      - "localhost:8080:8080"
+    environment:
+      EXECUTOR: Celery
+    volumes:
+      - ./dags:/usr/local/airflow/dags
+  airflow_scheduler:
+    image: puckel/docker-airflow:1.10.1
+    command: scheduler
+    depends_on:
+      - airflow_webserver
+    volumes:
+        - ./dags:/usr/local/airflow/dags
+    environment:
+      EXECUTOR: Celery
+  airflow_worker:
+    image: puckel/docker-airflow:1.10.1
+    command: worker
+    depends_on:
+        - airflow_scheduler
+    volumes:
+        - ./dags:/usr/local/airflow/dags
+    environment:
+      EXECUTOR: Celery
+
+  airflow-exporter:
+    image: mastak/airflow_operator_stats:ubuntu
+    ports:
+      - 8000
+    volumes:
+      - /proc:/host/proc:ro
+      - /etc/hostname:/host/hostname:ro
+    environment:
+      CUSTOM_PROCFS_PATH: /host/proc
+      HOSTNAME_PATH: /host/hostname
+
+  prometheus:
+    image: prom/prometheus:v2.6.0
+    ports:
+      - 9090
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+  grafana:
+    image: grafana/grafana:5.4.2
+    ports:
+      - "localhost:3000:3000"
+    environment:
+      GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s:/grafana"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_DATABASE_URL: "{{ grafana_database_url }}"
+    volumes:
+      - monitoring_grafana:/var/lib/grafana
