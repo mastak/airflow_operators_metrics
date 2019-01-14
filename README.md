@@ -6,7 +6,12 @@ Gather system information about airflow processes.
 
 * Run airflow_operators_metrics container on each node with airflow workers like:  
 ```
-docker run -d -v /proc:/host/proc:ro -v /etc/hostname:/host/hostname:ro -e CUSTOM_PROCFS_PATH=/host/proc -e HOSTNAME_PATH=/host/hostname mastak/airflow_operator_stats:alpine
+docker run -d \
+    -v /proc:/host/proc:ro \
+    -v /etc/hostname:/host/hostname:ro \
+    -e CUSTOM_PROCFS_PATH=/host/proc \
+    -e HOSTNAME_PATH=/host/hostname \
+    mastak/airflow_operator_stats:alpine
 ```
 
 
