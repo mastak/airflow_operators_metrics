@@ -1,6 +1,5 @@
 import logging
 import typing as t
-from dataclasses import dataclass
 
 import psutil
 from prometheus_client import Gauge, Summary
@@ -11,8 +10,7 @@ COLLECT_TIME = Summary('airflow_collecting_stats_seconds',
                        'Time spent processing collecting stats')
 
 
-@dataclass
-class ProcessMetrics:
+class ProcessMetrics(t.NamedTuple):
     dag: str
     operator: str
     exec_date: str
@@ -82,6 +80,7 @@ class MetricsContainer:
     @COLLECT_TIME.time()
     def collect(self):
         handled = 0
+        self._reset()
         for process_metrics in _get_processes_metrics():
             self._handle_process_metrics(process_metrics)
             handled += 1
@@ -106,19 +105,31 @@ class MetricsContainer:
         self._cpu_times_user.labels(**labels).set(metrics.cpu_times_user)
         self._cpu_times_system.labels(**labels).set(metrics.cpu_times_system)
 
+    def _reset(self):
+        self._mem_rss._metrics = {}
+        self._mem_vms._metrics = {}
+        self._mem_shared._metrics = {}
+        self._mem_text._metrics = {}
+        self._mem_uss._metrics = {}
+        self._mem_swap._metrics = {}
+        self._mem_pss._metrics = {}
+
+        self._cpu_percent._metrics = {}
+        self._cpu_times_user._metrics = {}
+        self._cpu_times_system._metrics = {}
+
 
 def _get_processes_metrics() -> t.Iterator[ProcessMetrics]:
     for process in psutil.process_iter():
-        airflow_data = get_airflow_data(process)
-        if not airflow_data:
-            continue
-
         try:
+            airflow_data = get_airflow_data(process)
+            if not airflow_data:
+                continue
             mem = process.memory_full_info()
+            cpu_times = process.cpu_times()
+            cpu_percent = process.cpu_percent()
         except psutil.NoSuchProcess:
             continue
-
-        cpu_times = process.cpu_times()
 
         yield ProcessMetrics(
             dag=airflow_data['dag'],
@@ -137,7 +148,7 @@ def _get_processes_metrics() -> t.Iterator[ProcessMetrics]:
             mem_pss=mem.pss,
             mem_swap=mem.swap,
 
-            cpu_percent=process.cpu_percent(),
+            cpu_percent=cpu_percent,
             cpu_times_user=cpu_times.user,
             cpu_times_system=cpu_times.system,
         )
@@ -163,7 +174,7 @@ def get_airflow_data(
     if not cmdline or not cmdline[0].startswith('/usr/bin/python'):
         return None
 
-    for cmd_arg in process.cmdline():
+    for cmd_arg in cmdline:
         if 'airflow run' not in cmd_arg:
             continue
 

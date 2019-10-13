@@ -1,3 +1,2 @@
-dataclasses
-prometheus_client==0.4.2
-psutil==5.4.8
+prometheus_client==0.7.1
+psutil==5.6.3
